@@ -28,11 +28,26 @@ tasks.withType<KotlinCompile> {
 }
 
 tasks {
+    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+        configurations = listOf(project.configurations.shadow.get())
+    }
+
+    val createProperties by registering(WriteProperties::class) {
+        description = "Write project properties"
+
+        outputFile = file("${buildDir}/project.properties")
+        encoding = "UTF-8"
+        comment = "Version and name of the project"
+
+        property("project.version", project.version)
+        property("project.name", project.name)
+    }
+
     build {
         dependsOn(shadowJar)
     }
 
-    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
-        configurations = listOf(project.configurations.shadow.get())
+    processResources {
+        dependsOn(createProperties)
     }
 }

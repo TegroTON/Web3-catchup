@@ -2,8 +2,8 @@ package money.tegro.connector
 
 import java.util.*
 
-val version by lazy {
-    val props = Properties()
-    ClassLoader.getSystemResourceAsStream("connector.properties")?.let { props.load(it) }
-    props.getProperty("version", "UNKNOWN").trim()
+val version: String by lazy {
+    ClassLoader.getSystemResourceAsStream("project.properties")
+        ?.let { Properties().apply { load(it) }.getProperty("project.version").trim() }
+        ?: "UNKNOWN"
 }

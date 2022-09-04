@@ -3,14 +3,11 @@ package money.tegro.connector
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import mu.KLogging
-import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.data.Schema
-import org.apache.kafka.connect.errors.ConnectException
 import org.apache.kafka.connect.source.SourceRecord
 import org.apache.kafka.connect.source.SourceTask
 import org.ton.api.liteserver.LiteServerDesc
 import org.ton.api.pub.PublicKeyEd25519
-import org.ton.api.tonnode.Shard
 import org.ton.api.tonnode.TonNodeBlockId
 import org.ton.api.tonnode.TonNodeBlockIdExt
 import org.ton.bigint.BigInt
@@ -22,20 +19,18 @@ import org.ton.lite.client.LiteClient
 import org.ton.tlb.storeTlb
 import kotlin.coroutines.CoroutineContext
 
-class TonBlockchainSourceTask : SourceTask(), CoroutineScope {
-    override val coroutineContext: CoroutineContext = Dispatchers.Default
+abstract class BlockSourceTask : SourceTask(), CoroutineScope {
+    lateinit var liteClient: LiteClient
 
-    private lateinit var configuration: TonBlockchainSourceTaskConfig
-    private lateinit var liteClient: LiteClient
+    private lateinit var configuration: BlockSourceTaskConfig
     private var queue = ArrayDeque<SourceRecord>(1024)
-
     private val job = launch {
         // Wait for initialization
-        while (!this@TonBlockchainSourceTask::liteClient.isInitialized) {
+        while (!this@BlockSourceTask::liteClient.isInitialized) {
             delay(1000)
         }
 
-        processBlock(liveMasterchainBlocks())
+        processBlock(masterchainBlocks())
             .collect {
                 queue.addLast(
                     SourceRecord(
@@ -53,29 +48,22 @@ class TonBlockchainSourceTask : SourceTask(), CoroutineScope {
             }
     }
 
-    override fun version(): String = version
+    override val coroutineContext: CoroutineContext = Dispatchers.Default
 
     override fun start(props: MutableMap<String, String>?) {
-        logger.info("starting ton blockchain connector task")
-        try {
-            configuration = TonBlockchainSourceTaskConfig(props ?: mapOf())
-            liteClient = LiteClient(
-                LiteServerDesc(
-                    PublicKeyEd25519.of(base64(configuration.publicKey)),
-                    configuration.ipv4,
-                    configuration.port
-                )
+        logger.info("starting block source connector task")
+        liteClient = LiteClient(
+            LiteServerDesc(
+                PublicKeyEd25519.of(base64(configuration.publicKey)),
+                configuration.ipv4,
+                configuration.port
             )
-        } catch (ce: ConfigException) {
-            throw ConnectException("Couldn't start ton blockchain connector task due to configuration error", ce)
-        } catch (ce: Exception) {
-            throw ConnectException("An error occurred when starting ton blockchain connector task", ce)
-        }
+        )
         job.start()
     }
 
     override fun stop() {
-        logger.info("stopping ton blockchain connector task")
+        logger.info("stopping block source connector task")
         job.cancel()
     }
 
@@ -86,24 +74,12 @@ class TonBlockchainSourceTask : SourceTask(), CoroutineScope {
         }
             .toMutableList()
 
-    private fun liveMasterchainBlocks() = flow {
-        while (currentCoroutineContext().isActive) {
-            emit(liteClient.getLastBlockId()) // Masterchain blocks
-        }
-    }
-        .distinctUntilChanged()
+    override fun version(): String = version
 
-    private fun historicalMasterchainBlocks(start: Int = 0, end: Int? = null) =
-        flow {
-            (start until (end ?: liteClient.getLastBlockId().seqno))
-                .forEach {
-                    liteClient.lookupBlock(TonNodeBlockId.of(-1, Shard.ID_ALL, it))?.let { emit(it) }
-                }
-        }
-            .distinctUntilChanged()
+    abstract fun masterchainBlocks(): Flow<TonNodeBlockIdExt>
 
     @OptIn(FlowPreview::class)
-    private suspend fun processBlock(input: Flow<TonNodeBlockIdExt>) =
+    private fun processBlock(input: Flow<TonNodeBlockIdExt>) =
         input
             .mapNotNull {
                 try {

@@ -4,16 +4,14 @@ import mu.KLogging
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
 
-open class TonBlockchainSourceConnectorConfig(config: ConfigDef, parsedConfig: Map<String, String>) :
+open class BlockSourceConnectorConfig(config: ConfigDef, parsedConfig: Map<String, String>) :
     AbstractConfig(config, parsedConfig) {
     constructor(parsedConfig: Map<String, String>) : this(definition(), parsedConfig)
 
     val topic by lazy { getString(TOPIC) }
 
     companion object : KLogging() {
-        const val PREFIX = "ton"
-
-        const val TOPIC = PREFIX + ".topic"
+        const val TOPIC = "topic"
         const val TOPIC_DOC = "Topic to post blocks to"
         const val TOPIC_DISPLAY = "Topic"
 
