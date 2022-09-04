@@ -16,7 +16,7 @@ services:
     environment:
       - ZOOKEEPER_CONNECT=zookeeper:2181
   connect:
-    image: debezium/connect:2.0
+    build: .
     ports:
       - 8083:8083
     depends_on:
@@ -29,5 +29,3 @@ services:
       - STATUS_STORAGE_TOPIC=my_connect_statuses
       - VALUE_CONVERTER=org.apache.kafka.connect.converters.ByteArrayConverter
       - KAFKA_DEBUG=true
-    volumes:
-      - ./build/libs:/kafka/connect/connector
