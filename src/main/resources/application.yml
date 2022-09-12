@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: connector
+  main:
+    banner-mode: off
+  cloud:
+    stream:
+      function:
+        bindings:
+          block-supplier-out-0:
+            
+logging:
+  level:
+    root: debug
