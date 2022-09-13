@@ -1,20 +1,15 @@
 package money.tegro.connector
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.reactor.asFlux
 import mu.KLogging
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import org.ton.block.Block
-import reactor.core.publisher.Flux
-import java.util.function.Supplier
 
 @SpringBootApplication
 class ConnectorApplication {
     @Bean
-    fun blocks(liveBlocks: Flow<Block>) =
-        Supplier<Flux<Block>> { liveBlocks.asFlux() }
+    fun blocks(liveBlockService: LiveBlockService, catchUpBlockService: CatchUpBlockService) =
+        liveBlockService.pollBlocks() + catchUpBlockService.pollBlocks()
 
     companion object : KLogging() {
         @JvmStatic
