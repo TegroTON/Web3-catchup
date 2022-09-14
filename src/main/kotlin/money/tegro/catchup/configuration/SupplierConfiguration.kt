@@ -1,6 +1,6 @@
-package money.tegro.connector.configuration
+package money.tegro.catchup.configuration
 
-import money.tegro.connector.service.BlockService
+import money.tegro.catchup.service.BlockService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.function.Supplier

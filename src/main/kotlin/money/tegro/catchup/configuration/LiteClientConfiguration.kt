@@ -1,4 +1,4 @@
-package money.tegro.connector.configuration
+package money.tegro.catchup.configuration
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream

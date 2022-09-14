@@ -1,10 +1,10 @@
-package money.tegro.connector.service
+package money.tegro.catchup.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import money.tegro.connector.properties.BlockServiceProperties
+import money.tegro.catchup.properties.BlockServiceProperties
 import mu.KLogging
 import org.springframework.beans.factory.DisposableBean
 import org.ton.api.tonnode.TonNodeBlockId

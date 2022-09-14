@@ -1,9 +1,9 @@
-package money.tegro.connector.service
+package money.tegro.catchup.service
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.yield
-import money.tegro.connector.properties.CatchUpBlockServiceProperties
+import money.tegro.catchup.properties.CatchUpBlockServiceProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
@@ -14,7 +14,7 @@ import org.ton.lite.client.LiteClient
 
 @Service
 @Scope("prototype")
-@ConditionalOnProperty("service.blocks.catch-up.enabled", havingValue = "true")
+@ConditionalOnProperty("catchup.blocks.catch-up.enabled", havingValue = "true")
 class CatchUpBlockService(
     liteClient: LiteClient,
     override val properties: CatchUpBlockServiceProperties,

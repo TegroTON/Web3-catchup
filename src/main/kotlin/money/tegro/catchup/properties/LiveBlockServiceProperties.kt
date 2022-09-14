@@ -1,15 +1,12 @@
-package money.tegro.connector.properties
+package money.tegro.catchup.properties
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.bind.DefaultValue
 
 @ConstructorBinding
-@ConfigurationProperties(prefix = "service.blocks.catch-up")
-class CatchUpBlockServiceProperties(
-    @DefaultValue("false")
+@ConfigurationProperties(prefix = "catchup.blocks.live")
+class LiveBlockServiceProperties(
+    @DefaultValue("true")
     val enabled: Boolean,
-
-    @DefaultValue("16")
-    val maxQueue: Long,
 ) : BlockServiceProperties
