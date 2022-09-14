@@ -23,8 +23,6 @@ repositories {
     maven("https://jitpack.io")
 }
 
-extra["springCloudVersion"] = "2021.0.4"
-
 dependencies {
     implementation("com.github.andreypfau.ton-kotlin:ton-kotlin:c678f34b0a")
     implementation("io.github.microutils:kotlin-logging:2.1.23")
@@ -36,16 +34,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.springframework.cloud:spring-cloud-stream")
-    implementation("org.springframework.cloud:spring-cloud-stream-binder-rabbit")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-}
-
-dependencyManagement {
-    imports {
-        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
-    }
 }
 
 tasks.withType<KotlinCompile> {
