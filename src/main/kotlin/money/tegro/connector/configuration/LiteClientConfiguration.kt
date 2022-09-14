@@ -1,4 +1,4 @@
-package money.tegro.connector
+package money.tegro.connector.configuration
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -10,7 +10,7 @@ import org.ton.api.liteclient.config.LiteClientConfigGlobal
 import org.ton.lite.client.LiteClient
 
 @Configuration
-class BlockchainConfiguration {
+class LiteClientConfiguration {
     @Bean
     fun liteClient() = LiteClient(Json {
         ignoreUnknownKeys = true

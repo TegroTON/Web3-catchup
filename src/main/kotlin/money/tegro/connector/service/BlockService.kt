@@ -1,9 +1,10 @@
-package money.tegro.connector
+package money.tegro.connector.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import money.tegro.connector.properties.BlockServiceProperties
 import mu.KLogging
 import org.springframework.beans.factory.DisposableBean
 import org.ton.api.tonnode.TonNodeBlockId
@@ -18,10 +19,11 @@ import kotlin.coroutines.CoroutineContext
 
 abstract class BlockService(
     val liteClient: LiteClient,
+    open val properties: BlockServiceProperties
 ) : CoroutineScope, DisposableBean {
     override val coroutineContext: CoroutineContext = Dispatchers.Default
 
-    private val blockQueue = LinkedBlockingQueue<Block>()
+    protected val blockQueue = LinkedBlockingQueue<Block>()
     fun pollBlocks(): List<Block> = mutableListOf<Block>().apply { blockQueue.drainTo(this) }
 
     abstract fun masterchainBlocks(): Flow<TonNodeBlockIdExt>
