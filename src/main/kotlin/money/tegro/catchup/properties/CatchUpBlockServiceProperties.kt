@@ -12,4 +12,9 @@ class CatchUpBlockServiceProperties(
 
     @DefaultValue("16")
     val maxQueue: Long,
+
+    @DefaultValue("0")
+    val startSeqno: Int,
+
+    val endSeqno: Int?,
 ) : BlockServiceProperties

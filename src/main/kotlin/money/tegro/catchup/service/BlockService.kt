@@ -18,8 +18,9 @@ import java.util.concurrent.LinkedBlockingQueue
 import kotlin.coroutines.CoroutineContext
 
 abstract class BlockService(
+    val routingKey: String,
     val liteClient: LiteClient,
-    open val properties: BlockServiceProperties
+    open val properties: BlockServiceProperties,
 ) : CoroutineScope, DisposableBean {
     override val coroutineContext: CoroutineContext = Dispatchers.Default
 

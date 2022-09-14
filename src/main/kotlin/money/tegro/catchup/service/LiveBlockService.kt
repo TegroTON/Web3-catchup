@@ -1,11 +1,11 @@
 package money.tegro.catchup.service
 
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.time.delay
 import money.tegro.catchup.properties.LiveBlockServiceProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -21,12 +21,12 @@ import org.ton.lite.client.LiteClient
 class LiveBlockService(
     liteClient: LiteClient,
     override val properties: LiveBlockServiceProperties,
-) : BlockService(liteClient, properties) {
+) : BlockService("live", liteClient, properties) {
     override fun masterchainBlocks(): Flow<TonNodeBlockIdExt> =
         flow {
             while (currentCoroutineContext().isActive) {
                 emit(liteClient.getLastBlockId())
-                delay(1_000)
+                delay(properties.pollRate)
             }
         }
             .distinctUntilChanged()
