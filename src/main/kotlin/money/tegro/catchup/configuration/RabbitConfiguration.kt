@@ -24,7 +24,7 @@ class RabbitConfiguration {
     fun exchange(): Exchange =
         ExchangeBuilder.topicExchange("blocks")
             .durable(true)
-            .build<DirectExchange>()
+            .build<FanoutExchange>()
 
     @Bean
     fun messageConverter() = object : AbstractMessageConverter() {
