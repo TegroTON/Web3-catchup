@@ -6,3 +6,19 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+  catchup_live:
+    build: .
+    depends_on:
+      - rabbitmq
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      CATCHUP_BLOCKS_LIVE_ENABLED: true
+
+  catchup_old:
+    build: .
+    depends_on:
+      - rabbitmq
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      CATCHUP_BLOCKS_CATCH_UP_ENABLED: true

@@ -1,11 +1,12 @@
-FROM debezium/connect-base:2.0
+FROM amazoncorretto:17-alpine AS build
 
-USER root
-COPY . /build
-RUN cd /build                                                                  \
- && chmod +x ./gradlew                                                         \
- && ./gradlew --no-daemon shadowJar                                            \
- && cd /                                                                       \
- && mkdir -p /kafka/connect/connector                                          \
- && cp /build/build/libs/* /kafka/connect/connector/                           \
- && rm -rf /build
+WORKDIR /work
+COPY . /work
+
+RUN chmod +x gradlew && ./gradlew --no-daemon bootJar
+
+FROM amazoncorretto:17-alpine
+
+COPY --from=build /work/build/libs/catchup-*.jar /app/catchup.jar
+
+ENTRYPOINT ["java","-jar","/app/catchup.jar"]
