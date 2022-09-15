@@ -14,7 +14,7 @@ import org.ton.lite.client.LiteClient
 
 @Configuration
 class LiteClientConfiguration(
-    @Value("\${LITE_CLIENT_CONFIG:classpath:config-sandbox.json}")
+    @Value("\${lite-client.config:classpath:config-sandbox.json}")
     private val jsonConfig: Resource
 ) {
     @OptIn(ExperimentalSerializationApi::class)

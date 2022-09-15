@@ -3,7 +3,6 @@ package money.tegro.catchup.configuration
 import money.tegro.catchup.service.BlockService
 import mu.KLogging
 import org.springframework.amqp.core.*
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.support.converter.AbstractMessageConverter
@@ -23,16 +22,9 @@ import org.ton.tlb.storeTlb
 class RabbitConfiguration {
     @Bean
     fun exchange(): Exchange =
-        ExchangeBuilder.directExchange("blocks")
+        ExchangeBuilder.topicExchange("blocks")
             .durable(true)
             .build<DirectExchange>()
-
-    @Bean
-    fun connectionFactory() =
-        CachingConnectionFactory("localhost").apply {
-            setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED)
-            isPublisherReturns = true
-        }
 
     @Bean
     fun messageConverter() = object : AbstractMessageConverter() {
@@ -50,24 +42,21 @@ class RabbitConfiguration {
     }
 
     @Bean
-    fun rabbitTemplate(connectionFactory: ConnectionFactory, messageConverter: MessageConverter) =
+    fun rabbitTemplate(connectionFactory: ConnectionFactory, messageConverter: MessageConverter, exchange: Exchange) =
         RabbitTemplate(connectionFactory).apply {
-            setMandatory(true)
             setMessageConverter(messageConverter)
-            setReturnsCallback { returnedMessage ->
-                logger.warn(returnedMessage.replyText)
-            }
+            setExchange(exchange.name)
         }
 
     @Bean
-    fun produceBlocks(rabbitTemplate: RabbitTemplate, blockService: BlockService): Runnable =
+    fun blockProducer(rabbitTemplate: RabbitTemplate, blockService: BlockService): Runnable =
         object : InitializingBean, Runnable {
             override fun afterPropertiesSet() {
                 rabbitTemplate.routingKey = blockService.routingKey
             }
 
             @Async
-            @Scheduled(initialDelay = 2_000, fixedRate = 1_000)
+            @Scheduled(fixedRateString = "\${catchup.blocks.rate:1000}")
             override fun run() {
                 blockService.pollBlocks().forEach(rabbitTemplate::convertAndSend)
             }
