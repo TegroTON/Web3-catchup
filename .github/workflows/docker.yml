@@ -8,8 +8,8 @@ on:
       -
 
 env:
-  REGISTRY: ghcr.io/tegroton
-  IMAGE: catchup
+  REGISTRY: ghcr.io
+  IMAGE: tegroton/catchup
 
 jobs:
   build:
@@ -24,14 +24,23 @@ jobs:
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
 
-      - name: Login to Github Packages
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build image with gradle
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: bootBuildImage --imageName=${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.ref_name }} --publishImage
+          arguments: bootBuildImage --imageName=${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.ref_name }}
+
+      - name: Login to Github Packages
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish container image
+        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.ref_name }}
+
+      - name: Publish container image (latest)
+        run: |
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.ref_name }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
