@@ -11,7 +11,11 @@ import org.ton.api.tonnode.TonNodeBlockId
 import org.ton.api.tonnode.TonNodeBlockIdExt
 import org.ton.bigint.BigInt
 import org.ton.block.*
+import org.ton.boc.BagOfCells
+import org.ton.cell.CellBuilder
+import org.ton.lite.api.liteserver.LiteServerTransactionInfo
 import org.ton.lite.client.LiteClient
+import org.ton.tlb.storeTlb
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -48,11 +52,12 @@ class BlockService(
 
     private val lastMasterchainShards = ConcurrentHashMap<Int, ShardDescr>()
 
+    @OptIn(FlowPreview::class)
     private suspend fun getShardchainBlocks(
         masterchainBlockId: TonNodeBlockIdExt,
         masterchainBlock: Block
     ): Flow<Pair<TonNodeBlockIdExt, Block>> {
-        val masterchainShards = masterchainBlock.extra.custom.value?.value?.shard_hashes
+        val masterchainShards = masterchainBlock.extra.custom.value?.shard_hashes
             ?.nodes()
             .orEmpty()
             .associate { BigInt(it.first.toByteArray()).toInt() to it.second.nodes().maxBy { it.seq_no } }
@@ -89,13 +94,13 @@ class BlockService(
         lastMasterchainShards.clear()
         lastMasterchainShards.putAll(masterchainShards)
 
-        return flowOf(masterchainBlockId to masterchainBlock).onStart { emitAll(shardchainBlocks) }
+        return flowOf(masterchainBlockId to masterchainBlock).onCompletion() { emitAll(shardchainBlocks) }
     }
 
     @OptIn(FlowPreview::class)
     private final val liveTransactions = liveBlocks
         .flatMapConcat { (id, block) ->
-            block.extra.account_blocks.value.nodes()
+            block.extra.account_blocks.nodes()
                 .flatMap { (account, _) ->
                     account.transactions.nodes().map { (transaction, _) -> id to transaction }
                 }
@@ -115,7 +120,7 @@ class BlockService(
                     logger.debug { "${info.src} -> (in) -> ${info.dest}" }
                 }
 
-                else -> throw IllegalStateException("unknown transaction info type: ${info?.javaClass?.simpleName}")
+                null -> {}
             }
         }
         .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("liveTransactions")), SharingStarted.Eagerly, 64)
@@ -123,7 +128,15 @@ class BlockService(
 
     private val backgroundJob = CoroutineScope(Dispatchers.Default + CoroutineName("backgroundJob")).launch {
         liveTransactions.collect { (id, transaction) ->
-            queueMessagingTemplate.convertAndSend("transactions", id to transaction)
+            val transactionCell = CellBuilder.createCell { storeTlb(Transaction, transaction) }
+            queueMessagingTemplate.convertAndSend(
+                "transactions",
+                LiteServerTransactionInfo(
+                    id,
+                    BagOfCells(CellBuilder.createMerkleProof(transactionCell)).toByteArray(),
+                    BagOfCells(transactionCell).toByteArray(),
+                )
+            )
         }
     }
 

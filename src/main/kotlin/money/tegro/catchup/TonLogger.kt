@@ -6,10 +6,6 @@ import org.ton.logger.Logger
 class TonLogger(override var level: Logger.Level = Logger.Level.DEBUG) : Logger {
     override fun log(level: Logger.Level, message: () -> String) {
         when (level) {
-            Logger.Level.TRACE -> {
-                logger.trace(message)
-            }
-
             Logger.Level.DEBUG -> {
                 logger.debug(message)
             }

@@ -3,16 +3,20 @@ spring:
     name: catchup
   main:
     banner-mode: off
-  cloud:
-    aws:
 
-cloud.aws:
-  sqs:
-    endpoint: https://message-queue.api.cloud.yandex.net/
-  credentials:
-    accessKey: ${AWS_ACCESS_KEY}
-    secretKey: ${AWS_SECRET_KEY}
+cloud:
+  yandex:
+    region: ru-central1
+  aws:
+    sqs:
+      endpoint: https://message-queue.api.cloud.yandex.net/
+    credentials:
+      accessKey: ${AWS_ACCESS_KEY}
+      secretKey: ${AWS_SECRET_KEY}
 
+logging:
+  level:
+    money.tegro: DEBUG
 
 lite.client:
   ip: -1182143975
