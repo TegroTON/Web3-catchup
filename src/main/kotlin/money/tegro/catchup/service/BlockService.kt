@@ -1,65 +1,58 @@
 package money.tegro.catchup.service
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import io.awspring.cloud.messaging.core.QueueMessagingTemplate
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import money.tegro.catchup.properties.BlockServiceProperties
 import mu.KLogging
-import org.springframework.beans.factory.DisposableBean
+import org.springframework.stereotype.Service
+import org.ton.api.tonnode.Shard
 import org.ton.api.tonnode.TonNodeBlockId
 import org.ton.api.tonnode.TonNodeBlockIdExt
 import org.ton.bigint.BigInt
-import org.ton.block.Block
-import org.ton.block.ShardDescr
+import org.ton.block.*
 import org.ton.lite.client.LiteClient
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.LinkedBlockingQueue
-import kotlin.coroutines.CoroutineContext
 
-abstract class BlockService(
-    val routingKey: String,
-    val liteClient: LiteClient,
-    open val properties: BlockServiceProperties,
-) : CoroutineScope, DisposableBean {
-    override val coroutineContext: CoroutineContext = Dispatchers.Default
-
-    protected val blockQueue = LinkedBlockingQueue<Block>()
-    fun pollBlocks(): List<Block> = mutableListOf<Block>().apply { blockQueue.drainTo(this) }
-
-    abstract fun masterchainBlocks(): Flow<TonNodeBlockIdExt>
-
-    override fun destroy() {
-        backgroundJob.cancel()
+@Service
+class BlockService(
+    private val liteClient: LiteClient,
+    private val queueMessagingTemplate: QueueMessagingTemplate,
+    private val blockServiceProperties: BlockServiceProperties,
+) {
+    final val latestBlockIds = flow {
+        while (currentCoroutineContext().isActive) {
+            emit(liteClient.getLastBlockId())
+            kotlinx.coroutines.time.delay(blockServiceProperties.pollRate)
+        }
     }
+        .distinctUntilChanged()
+        .onEach { logger.debug { "latest masterchain block seqno=${it.seqno}" } }
+        .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("latestBlockIds")), SharingStarted.Eagerly)
 
-    private val backgroundJob = launch {
-        masterchainBlocks()
-            .processMasterchainBlocks()
-    }
-
-    private suspend fun Flow<TonNodeBlockIdExt>.processMasterchainBlocks() =
-        this.mapNotNull {
+    @OptIn(FlowPreview::class)
+    final val liveBlocks = latestBlockIds
+        .mapNotNull { id ->
             try {
-                liteClient.getBlock(it)
+                liteClient.getBlock(id)?.let { id to it } // TODO: Retries
             } catch (e: Exception) {
-                logger.warn("couldn't get masterchain block seqno={}", it, e)
+                logger.warn(e) { "couldn't get masterchain block seqno=${id.seqno}" }
                 null
             }
         }
-            .map(::getShardchainBlocks)
-            .collect { blocks ->
-                blocks.forEach {
-                    logger.info("block workchain={} seqno={}", it.info.shard.workchain_id, it.info.seq_no)
-                }
-
-                blockQueue.addAll(blocks)
-            }
+        .flatMapConcat { (id, block) -> getShardchainBlocks(id, block) }
+        .onEach { (id, _) ->
+            logger.info { "block workchain=${id.workchain} seqno=${id.seqno}" }
+        }
+        .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("liveBlocks")), SharingStarted.Eagerly, 64)
 
     private val lastMasterchainShards = ConcurrentHashMap<Int, ShardDescr>()
 
-    private suspend fun getShardchainBlocks(masterchainBlock: Block): List<Block> {
-        val masterchainShards = masterchainBlock.extra.custom.value?.shard_hashes
+    private suspend fun getShardchainBlocks(
+        masterchainBlockId: TonNodeBlockIdExt,
+        masterchainBlock: Block
+    ): Flow<Pair<TonNodeBlockIdExt, Block>> {
+        val masterchainShards = masterchainBlock.extra.custom.value?.value?.shard_hashes
             ?.nodes()
             .orEmpty()
             .associate { BigInt(it.first.toByteArray()).toInt() to it.second.nodes().maxBy { it.seq_no } }
@@ -70,26 +63,68 @@ abstract class BlockService(
                     .map { seqno ->
                         TonNodeBlockId(
                             workchain,
-                            shard.next_validator_shard.toLong(), /* Shard.ID_ALL */ // TODO
+                            Shard.ID_ALL, // shard.next_validator_shard.toLong(),
                             seqno.toInt(),
                         )
                     }
             }
             .asFlow()
-            .mapNotNull {
+            .mapNotNull { id ->
                 try {
-                    liteClient.lookupBlock(it)?.let { liteClient.getBlock(it) }
+                    liteClient.lookupBlock(id) // TODO: Retries
                 } catch (e: Exception) {
-                    logger.warn("couldn't get block workchain={} seqno={}", it.workchain, it.seqno, e)
+                    logger.warn(e) { "couldn't get shardchain block id workchain=${id.workchain} seqno=${id.seqno}" }
                     null
                 }
             }
-            .toList()
+            .mapNotNull { id ->
+                try {
+                    liteClient.getBlock(id)?.let { id to it } // TODO: Retries
+                } catch (e: Exception) {
+                    logger.warn(e) { "couldn't get shardchain block workchain=${id.workchain} seqno=${id.seqno}" }
+                    null
+                }
+            }
 
         lastMasterchainShards.clear()
         lastMasterchainShards.putAll(masterchainShards)
 
-        return listOf(masterchainBlock) + shardchainBlocks
+        return flowOf(masterchainBlockId to masterchainBlock).onStart { emitAll(shardchainBlocks) }
+    }
+
+    @OptIn(FlowPreview::class)
+    private final val liveTransactions = liveBlocks
+        .flatMapConcat { (id, block) ->
+            block.extra.account_blocks.value.nodes()
+                .flatMap { (account, _) ->
+                    account.transactions.nodes().map { (transaction, _) -> id to transaction }
+                }
+                .asFlow()
+        }
+        .onEach { (_, transaction) ->
+            when (val info = transaction.in_msg.value?.info) {
+                is ExtInMsgInfo -> {
+                    logger.debug { "${info.src} -> (ext in) -> ${info.dest}" }
+                }
+
+                is ExtOutMsgInfo -> {
+                    logger.debug { "${info.src} -> (ext out) -> ${info.dest}" }
+                }
+
+                is IntMsgInfo -> {
+                    logger.debug { "${info.src} -> (in) -> ${info.dest}" }
+                }
+
+                else -> throw IllegalStateException("unknown transaction info type: ${info?.javaClass?.simpleName}")
+            }
+        }
+        .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("liveTransactions")), SharingStarted.Eagerly, 64)
+
+
+    private val backgroundJob = CoroutineScope(Dispatchers.Default + CoroutineName("backgroundJob")).launch {
+        liveTransactions.collect { (id, transaction) ->
+            queueMessagingTemplate.convertAndSend("transactions", id to transaction)
+        }
     }
 
     companion object : KLogging()

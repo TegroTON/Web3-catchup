@@ -3,3 +3,18 @@ spring:
     name: catchup
   main:
     banner-mode: off
+  cloud:
+    aws:
+
+cloud.aws:
+  sqs:
+    endpoint: https://message-queue.api.cloud.yandex.net/
+  credentials:
+    accessKey: ${AWS_ACCESS_KEY}
+    secretKey: ${AWS_SECRET_KEY}
+
+
+lite.client:
+  ip: -1182143975
+  port: 36573
+  key: "ZYe6sDZZc63sH3JnpIS8Yj86NFGnRlQF9NOvzl6UM0c="

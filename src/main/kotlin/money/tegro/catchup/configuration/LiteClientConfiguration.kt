@@ -1,29 +1,25 @@
 package money.tegro.catchup.configuration
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.Dispatchers
+import money.tegro.catchup.properties.LiteClientProperties
 import mu.KLogging
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.io.Resource
-import org.ton.api.liteclient.config.LiteClientConfigGlobal
+import org.springframework.context.annotation.Scope
 import org.ton.lite.client.LiteClient
 
 
 @Configuration
 class LiteClientConfiguration(
-    @Value("\${lite-client.config:classpath:config-sandbox.json}")
-    private val jsonConfig: Resource
+    private val liteClientProperties: LiteClientProperties,
 ) {
-    @OptIn(ExperimentalSerializationApi::class)
     @Bean
+    @Scope("prototype")
     fun liteClient() = LiteClient(
-        Json {
-            ignoreUnknownKeys = true
-        }
-            .decodeFromStream<LiteClientConfigGlobal>(jsonConfig.inputStream))
+        Dispatchers.IO + CoroutineName("liteClient"),
+        liteClientProperties.toLiteServerDesc(),
+    )
 
     companion object : KLogging()
 }
