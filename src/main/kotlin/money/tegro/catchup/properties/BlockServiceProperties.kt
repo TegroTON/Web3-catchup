@@ -10,4 +10,7 @@ import java.time.Duration
 data class BlockServiceProperties(
     @DefaultValue("PT2S")
     val pollRate: Duration,
+
+    @DefaultValue("transactions")
+    val queueName: String,
 )

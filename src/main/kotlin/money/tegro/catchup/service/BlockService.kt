@@ -134,7 +134,7 @@ class BlockService(
         liveTransactions.collect { (id, transaction) ->
             val transactionCell = CellBuilder.createCell { storeTlb(Transaction, transaction) }
             queueMessagingTemplate.convertAndSend(
-                "transactions",
+                blockServiceProperties.queueName,
                 LiteServerTransactionInfo(
                     id,
                     BagOfCells(CellBuilder.createMerkleProof(transactionCell)).toByteArray(),
