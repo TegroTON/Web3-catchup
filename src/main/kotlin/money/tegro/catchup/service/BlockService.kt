@@ -26,7 +26,11 @@ class BlockService(
 ) {
     final val latestBlockIds = flow {
         while (currentCoroutineContext().isActive) {
-            emit(liteClient.getLastBlockId())
+            try {
+                emit(liteClient.getLastBlockId())
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to get latest block id" }
+            }
             kotlinx.coroutines.time.delay(blockServiceProperties.pollRate)
         }
     }
