@@ -38,8 +38,36 @@ class BlockService(
         .onEach { logger.debug { "latest masterchain block seqno=${it.seqno}" } }
         .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("latestBlockIds")), SharingStarted.Eagerly)
 
+    final val catchupBlockIds = flow {
+        val startBlockId = liteClient.getLastBlockId()
+        var lastBlockId: TonNodeBlockIdExt? = null
+
+        while (currentCoroutineContext().isActive &&
+            (lastBlockId?.seqno ?: 0) < startBlockId.seqno && blockServiceProperties.startSeqno != null
+        ) {
+            try {
+                lastBlockId = checkNotNull(
+                    liteClient.lookupBlock(
+                        TonNodeBlockId(
+                            -1,
+                            Shard.ID_ALL,
+                            lastBlockId?.seqno?.plus(1) ?: blockServiceProperties.startSeqno
+                        )
+                    )
+                ) { "Failed to look up block id" }
+                emit(lastBlockId)
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to look up block id" }
+            }
+            kotlinx.coroutines.time.delay(blockServiceProperties.catchupRate)
+        }
+    }
+        .onEach { logger.debug { "catching up on masterchain block seqno=${it.seqno}" } }
+        .shareIn(CoroutineScope(Dispatchers.IO + CoroutineName("catchupBlockIds")), SharingStarted.Eagerly)
+
+
     @OptIn(FlowPreview::class)
-    final val liveBlocks = latestBlockIds
+    final val liveBlocks = merge(latestBlockIds, catchupBlockIds)
         .mapNotNull { id ->
             try {
                 liteClient.getBlock(id)?.let { id to it } // TODO: Retries

@@ -13,4 +13,9 @@ data class BlockServiceProperties(
 
     @DefaultValue("transactions")
     val queueName: String,
+
+    val startSeqno: Int? = null,
+
+    @DefaultValue("PT0.1S")
+    val catchupRate: Duration,
 )

@@ -18,6 +18,9 @@ logging:
   level:
     money.tegro: DEBUG
 
+catchup.blocks:
+  startseqno: 26205420
+
 lite.client:
   ip: -1182143975
   port: 36573
