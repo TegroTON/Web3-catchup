@@ -10,6 +10,7 @@ import org.ton.api.tonnode.Shard
 import org.ton.api.tonnode.TonNodeBlockId
 import org.ton.api.tonnode.TonNodeBlockIdExt
 import org.ton.bigint.BigInt
+import org.ton.bitstring.BitString
 import org.ton.block.*
 import org.ton.boc.BagOfCells
 import org.ton.cell.CellBuilder
@@ -141,15 +142,15 @@ class BlockService(
         .onEach { (_, transaction) ->
             when (val info = transaction.in_msg.value?.info) {
                 is ExtInMsgInfo -> {
-                    logger.debug { "${info.src} -> (ext in) -> ${info.dest}" }
+                    logger.trace { "${info.src} -> (ext in) -> ${info.dest}" }
                 }
 
                 is ExtOutMsgInfo -> {
-                    logger.debug { "${info.src} -> (ext out) -> ${info.dest}" }
+                    logger.trace { "${info.src} -> (ext out) -> ${info.dest}" }
                 }
 
                 is IntMsgInfo -> {
-                    logger.debug { "${info.src} -> (in) -> ${info.dest}" }
+                    logger.trace { "${info.src} -> (in) -> ${info.dest}" }
                 }
 
                 null -> {}
@@ -159,17 +160,22 @@ class BlockService(
 
 
     private val backgroundJob = CoroutineScope(Dispatchers.Default + CoroutineName("backgroundJob")).launch {
-        liveTransactions.collect { (id, transaction) ->
-            val transactionCell = CellBuilder.createCell { storeTlb(Transaction, transaction) }
-            queueMessagingTemplate.convertAndSend(
-                blockServiceProperties.queueName,
-                LiteServerTransactionInfo(
-                    id,
-                    BagOfCells(CellBuilder.createMerkleProof(transactionCell)).toByteArray(),
-                    BagOfCells(transactionCell).toByteArray(),
+        liveTransactions
+            .filter { (_, transaction) -> // Filter out dumb system transactions we don't need
+                transaction.account_addr != BitString("3333333333333333333333333333333333333333333333333333333333333333") &&
+                        transaction.account_addr != BitString("5555555555555555555555555555555555555555555555555555555555555555")
+            }
+            .collect { (id, transaction) ->
+                val transactionCell = CellBuilder.createCell { storeTlb(Transaction, transaction) }
+                queueMessagingTemplate.convertAndSend(
+                    blockServiceProperties.queueName,
+                    LiteServerTransactionInfo(
+                        id,
+                        BagOfCells(CellBuilder.createMerkleProof(transactionCell)).toByteArray(),
+                        BagOfCells(transactionCell).toByteArray(),
+                    )
                 )
-            )
-        }
+            }
     }
 
     companion object : KLogging()
