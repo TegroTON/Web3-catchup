@@ -26,7 +26,7 @@ class BlockService(
     private val blockServiceProperties: BlockServiceProperties,
 ) {
     final val latestBlockIds = flow {
-        while (currentCoroutineContext().isActive) {
+        while (currentCoroutineContext().isActive && blockServiceProperties.startSeqno == null) {
             try {
                 emit(liteClient.getLastBlockId())
             } catch (e: Exception) {

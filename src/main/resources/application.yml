@@ -19,8 +19,7 @@ logging:
     money.tegro: DEBUG
 
 catchup.blocks:
-#  queueName: transactions-test
-#  startSeqno: 26205420
+  queueName: transactions
 
 lite.client:
   ip: -1182143975
