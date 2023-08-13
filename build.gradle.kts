@@ -29,7 +29,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.ton:ton-kotlin:0.1.1")
     implementation("io.github.microutils:kotlin-logging:3.0.4")
-    implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.2")
+    implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
