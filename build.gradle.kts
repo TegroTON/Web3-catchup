@@ -4,7 +4,7 @@ plugins {
     id("org.springframework.boot") version "2.7.7"
     id("io.spring.dependency-management") version "1.0.15.RELEASE"
     kotlin("jvm") version "1.7.22"
-    kotlin("plugin.spring") version "1.7.22"
+    kotlin("plugin.spring") version "1.9.20"
     kotlin("plugin.serialization") version "1.7.22"
 }
 
