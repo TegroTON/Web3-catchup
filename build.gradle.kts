@@ -27,7 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.ton:ton-kotlin:0.1.1")
+    implementation("org.ton:ton-kotlin:0.2.18")
     implementation("io.github.microutils:kotlin-logging:3.0.4")
     implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
